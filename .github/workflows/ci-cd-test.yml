@@ -23,16 +23,17 @@ jobs:
         run: npm install
 
       - name: Run tests
-        run: |
-          npm test > test-results.txt 2>&1 || true
-          echo "Test execution completed at $(date)" >> test-results.txt
-        continue-on-error: true
+        run: npm test
+#        run: |
+#          npm test > test-results.txt 2>&1 || true
+#          echo "Test execution completed at $(date)" >> test-results.txt
+#        continue-on-error: true
 
-      - name: build
-        run: |                          
-          echo "Building application"
-          npm run build
-          echo "Build complete"
+#      - name: build
+#        run: |                          
+#          echo "Building application"
+#          npm run build
+#          echo "Build complete"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
