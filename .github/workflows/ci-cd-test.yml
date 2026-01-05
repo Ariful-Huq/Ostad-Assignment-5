@@ -23,7 +23,7 @@ jobs:
         run: npm install
 
       - name: Run tests
-        run: npm test
+        run: npm run check
 #        run: |
 #          npm test > test-results.txt 2>&1 || true
 #          echo "Test execution completed at $(date)" >> test-results.txt
