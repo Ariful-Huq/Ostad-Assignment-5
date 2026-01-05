@@ -23,23 +23,33 @@ jobs:
         run: npm install
 
       - name: Run tests
-        run: npm run check
-#        run: |
-#          npm test > test-results.txt 2>&1 || true
-#          echo "Test execution completed at $(date)" >> test-results.txt
-#        continue-on-error: true
+        run: |
+          npm run check > test-results.txt 2>&1 || true
+          echo "Test execution completed at $(date)" >> test-results.txt
+        continue-on-error: true
 
-#      - name: build
-#        run: |                          
-#          echo "Building application"
-#          npm run build
-#          echo "Build complete"
+      - name: Upload test results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.txt
+          retention-days: 30
+
+      - name: Verify tests passed
+        run: npm run check
+
+      - name: build
+        run: |                          
+          echo "Building application"
+          npm run build
+          echo "Build complete"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-files
           path: dist/
+          retention-days: 30
 
   deploy:
       name: Deploy Application
@@ -47,16 +57,42 @@ jobs:
       runs-on: ubuntu-latest
       
       steps:
+        - name: Set up job
+          run: echo "Starting deployment job"
+
+        - name: Download test results artifact
+          uses: actions/download-artifact@v4
+          with:
+            name: test-results
+            path: ./artifacts
+        
         - name: Download build artifacts
           uses: actions/download-artifact@v4
           with:
             name: build-files
-            path: dist/
+            path: .dist/
 
+        - name: Display test results artifact content
+          run: |
+            echo "========================================="
+            echo "Test Results:"
+            echo "========================================="
+            cat ./artifacts/test-results.txt
+            echo "========================================="
+        
         - name: Verify downloaded artifact
           run: |
-            echo "Listing downloaded files:"
+            echo "========================================="
+            echo "Build Artifacts:"
+            echo "========================================="
             ls -R dist/
+            echo "========================================="
 
         - name: Deploy
-          run: echo "Deploying..."
+          run: |
+            echo "Deploying application..."
+            DEPLOY_DIR="$HOME/deployments/nodejs-app"
+            mkdir -p $DEPLOY_DIR
+            cp -r dist/* $DEPLOY_DIR/
+            echo "Deployment completed to: $DEPLOY_DIR"
+            ls -la $DEPLOY_DIR
