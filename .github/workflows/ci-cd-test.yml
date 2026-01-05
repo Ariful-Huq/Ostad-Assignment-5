@@ -38,38 +38,31 @@ jobs:
       - name: Verify tests passed
         run: npm run check
 
-      - name: build
-        run: |                          
-          echo "Building application"
-          npm run build
-          echo "Build complete"
+      - name: Create deployment package
+        run: |
+          tar -czf app-package.tar.gz src/ package.json package-lock.json
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-files
-          path: dist/
-          retention-days: 30
-
+          name: app-package
+          path: app-package.tar.gz
+          
   deploy:
       name: Deploy Application
       needs: test
       runs-on: ubuntu-latest
       
       steps:
-        - name: Set up job
-          run: echo "Starting deployment job"
-
         - name: Download test results artifact
           uses: actions/download-artifact@v4
           with:
             name: test-results
-            path: ./artifacts
         
         - name: Download build artifacts
           uses: actions/download-artifact@v4
           with:
-            name: build-files
+            name: app-package
             path: .dist/
 
         - name: Display test results artifact content
@@ -77,22 +70,25 @@ jobs:
             echo "========================================="
             echo "Test Results:"
             echo "========================================="
-            cat ./artifacts/test-results.txt
+            cat test-results.txt
             echo "========================================="
         
         - name: Verify downloaded artifact
           run: |
-            echo "========================================="
-            echo "Build Artifacts:"
-            echo "========================================="
-            ls -R dist/
-            echo "========================================="
+            echo "Deployment package downloaded:"
+            ls -lh app-package.tar.gz
 
         - name: Deploy
           run: |
             echo "Deploying application..."
-            DEPLOY_DIR="$HOME/deployments/nodejs-app"
-            mkdir -p $DEPLOY_DIR
-            cp -r dist/* $DEPLOY_DIR/
-            echo "Deployment completed to: $DEPLOY_DIR"
+            DEPLOY_DIR="$HOME/deployments/node-express-app"
+            mkdir -p "$DEPLOY_DIR"
+
+            tar -xzf app-package.tar.gz -C "$DEPLOY_DIR"
+
+            cd "$DEPLOY_DIR"
+            npm install --production
+
+            echo "Deployment completed!"
+            echo "Application files deployed to: $DEPLOY_DIR"
             ls -la $DEPLOY_DIR
