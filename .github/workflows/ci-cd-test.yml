@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Run Tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ci-cd-self-hosted-runner]
 
     steps:
       - name: Checkout Repository
@@ -19,52 +19,53 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm install
 
-      - name: Run tests
+      - name: Run Tests
         run: |
           npm run check > test-results.txt 2>&1 || true
           echo "Test execution completed at $(date)" >> test-results.txt
         continue-on-error: true
 
-      - name: Upload test results artifact
+      - name: Upload Test Results Artifact
         uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: test-results.txt
           retention-days: 30
 
-      - name: Verify tests passed
+      - name: Verify Tests
         run: npm run check
 
-      - name: Create deployment package
-        run: |
-          tar -czf app-package.tar.gz src/ package.json package-lock.json
-
-      - name: Upload build artifacts
+      - name: Upload Application Files Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-package
-          path: app-package.tar.gz
+          name: app-files
+          path: |
+            src/
+            package.json
+            package-lock.json
+          retention-days: 30
           
   deploy:
       name: Deploy Application
       needs: test
-      runs-on: ubuntu-latest
+      runs-on: [self-hosted, ci-cd-self-hosted-runner-2]
       
       steps:
-        - name: Download test results artifact
+        - name: Download Test Results Artifact
           uses: actions/download-artifact@v4
           with:
             name: test-results
         
-        - name: Download build artifacts
+        - name: Download Application Files Artifact
           uses: actions/download-artifact@v4
           with:
-            name: app-package
+            name: app-files
+            path: ./app-files
 
-        - name: Display test results artifact content
+        - name: Display Test Results Artifact Content
           run: |
             echo "========================================="
             echo "Test Results:"
@@ -72,22 +73,45 @@ jobs:
             cat test-results.txt
             echo "========================================="
         
-        - name: Verify downloaded artifact
+        - name: Display Downloaded Application Files
           run: |
-            echo "Deployment package downloaded:"
-            ls -lh app-package.tar.gz
+            echo "========================================="
+            echo "DOWNLOADED APPLICATION FILES:"
+            echo "========================================="
+            ls -laR ./app-files
+            echo "========================================="
 
-        - name: Deploy
+        - name: Deploy Application
           run: |
             echo "Deploying application..."
             DEPLOY_DIR="$HOME/deployments/node-express-app"
             mkdir -p "$DEPLOY_DIR"
 
-            tar -xzf app-package.tar.gz -C "$DEPLOY_DIR"
+            cp -r ./app-files/* "$DEPLOY_DIR/"
 
             cd "$DEPLOY_DIR"
+            echo "Installing production dependencies..."
             npm install --production
 
-            echo "Deployment completed!"
-            echo "Application files deployed to: $DEPLOY_DIR"
-            ls -la $DEPLOY_DIR
+            echo ""
+            echo "Deployment completed successfully!"
+            echo "Deploy location: $DEPLOY_DIR"
+            echo "Deployed files:"
+            ls -la "$DEPLOY_DIR"
+
+        - name: Start application with PM2
+          run: |
+            DEPLOY_DIR="$HOME/deployments/node-express-app"
+            cd "$DEPLOY_DIR"
+            
+            if ! command -v pm2 &> /dev/null; then
+              echo "Installing PM2..."
+              npm install -g pm2
+            fi
+            
+            echo "Starting application with PM2..."
+            pm2 start src/server.js --name node-express-app
+            pm2 save
+            
+            echo ""
+            pm2 list
