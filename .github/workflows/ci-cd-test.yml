@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Run Tests
-    runs-on: [self-hosted, test-runner-1]
+    runs-on: [self-hosted, test-runner]
 
     steps:
       - name: Checkout Repository
@@ -52,7 +52,7 @@ jobs:
   deploy:
       name: Deploy Application
       needs: test
-      runs-on: [self-hosted, deploy-runner-1]
+      runs-on: [self-hosted, deploy-runner]
       
       steps:
         - name: Install Node.js 22 via NodeSource
@@ -117,7 +117,13 @@ jobs:
               sudo npm install -g pm2
             fi
 
-            sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u $USER --hp $HOME
+            if ! systemctl is-enabled pm2-$USER &>/dev/null; then
+              echo "Configuring PM2 startup service..."
+              sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u $USER --hp $HOME
+              echo "Starting PM2 systemd service..."
+              sudo systemctl start pm2-$USER
+              sudo systemctl enable pm2-$USER
+            fi
 
             echo "Starting application with PM2..."
             pm2 delete node-express-app || true
