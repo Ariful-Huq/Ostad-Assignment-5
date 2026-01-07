@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Run Tests
-    runs-on: [self-hosted, runner-1]
+    runs-on: [self-hosted, test-runner-1]
 
     steps:
       - name: Checkout Repository
@@ -52,7 +52,7 @@ jobs:
   deploy:
       name: Deploy Application
       needs: test
-      runs-on: [self-hosted, runner-2]
+      runs-on: [self-hosted, deploy-runner-1]
       
       steps:
         - name: Install Node.js 22 via NodeSource
