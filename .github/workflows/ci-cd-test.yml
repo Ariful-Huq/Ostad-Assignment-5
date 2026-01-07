@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Run Tests
-    runs-on: [self-hosted, ci-cd-self-hosted-runner]
+    runs-on: [self-hosted, runner-1]
 
     steps:
       - name: Checkout Repository
@@ -44,6 +44,7 @@ jobs:
           name: app-files
           path: |
             src/
+            test/
             package.json
             package-lock.json
           retention-days: 30
@@ -51,14 +52,16 @@ jobs:
   deploy:
       name: Deploy Application
       needs: test
-      runs-on: [self-hosted, ci-cd-self-hosted-runner-2]
+      runs-on: [self-hosted, runner-2]
       
       steps:
-        - name: Setup Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: '22'
-            
+        - name: Install Node.js 22 via NodeSource
+          run: |
+            curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+            node --version
+            npm --version
+
         - name: Download Test Results Artifact
           uses: actions/download-artifact@v4
           with:
